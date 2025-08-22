@@ -20,7 +20,7 @@ MODEL_SPEC = spec.ModelSpec(
     userguide='',
     input_field_order=[
         ['workspace_dir'],
-        ['scenarios_csv']],
+        ['scenarios']],
     inputs=[
         spec.DirectoryInput(
             id="workspace_dir",
@@ -29,13 +29,22 @@ MODEL_SPEC = spec.ModelSpec(
                 "The folder where all the model's output files will be written. If "
                 "this folder does not exist, it will be created. If data already "
                 "exists in the folder, it will be overwritten."),
-            contents={},
+            contents=[],
             must_exist=False,
             permissions="rwx"
         ),
         spec.CSVInput(
             id="scenarios",
             name="Completed Scenarios",
+            about=(
+                "Make a CSV with two columns: 'scenarios' and 'logfiles'.\n"
+                " Each row represents a scenario. The 'scenarios' column should"
+                " be a simple label to describe that scenario, for example,"
+                " 'baseline'. The 'logfiles' column should be the path to the"
+                " InVEST logfile (.txt file) that was generated when the"
+                " SDR model was run. Include as many rows as desired."
+                " The first row will be treated as the baseline scenario to"
+                " which all other scenarios are compared."),
             columns=[
                 spec.StringInput(id='scenarios'),
                 spec.FileInput(id='logfiles')]
@@ -92,6 +101,7 @@ def difference_vectors(vector_path_a, vector_path_b, field_list, target_vector_p
             value_a = feature_a.GetField(field)
             value_b = feature_b.GetField(field)
             diff_value = value_b - value_a  # scenario - baseline
+            LOGGER.info(f'Field: {newfield}; Value: {diff_value}')
             target_feature.SetField(newfield, diff_value)
     LOGGER.info(f'created {target_vector_path}')
     layer_a = layer_b = target_layer = None
@@ -114,6 +124,8 @@ def execute(args):
     scenario_logfiles = {
         k: v for k, v in zip(list(scenarios_df.scenarios), list(scenarios_df.logfiles))}
     base_scenario = list(scenario_logfiles)[0]
+    LOGGER.info(scenarios_df)
+    LOGGER.info(f'Baseline scenario: {base_scenario}')
 
     workspace = args['workspace_dir']
     if not os.path.exists(workspace):
@@ -195,7 +207,7 @@ if __name__ == '__main__':
             'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/sdr_example/InVEST-sdr-log-2025-07-21--14_04_29.txt',
             'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/sdr_example_scenario/InVEST-sdr-log-2025-08-05--15_26_49.txt',
             'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/sdr_example_scenario2/InVEST-sdr-log-2025-08-06--15_50_25.txt']
-        }).to_csv(csv_path)
+        }, index=False).to_csv(csv_path)
     workspace = 'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/scenario_compare'
     args = {
         'scenarios': csv_path,
