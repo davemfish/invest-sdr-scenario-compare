@@ -1,6 +1,7 @@
 import logging
 import os
 
+import geopandas
 from osgeo import gdal, ogr
 import natcap.invest.utils
 from natcap.invest import datastack
@@ -103,6 +104,7 @@ def difference_vectors(vector_path_a, vector_path_b, field_list, target_vector_p
             diff_value = value_b - value_a  # scenario - baseline
             LOGGER.info(f'Field: {newfield}; Value: {diff_value}')
             target_feature.SetField(newfield, diff_value)
+            target_layer.SetFeature(target_feature)
     LOGGER.info(f'created {target_vector_path}')
     layer_a = layer_b = target_layer = None
     vector_a = vector_b = target_vector = None
@@ -144,9 +146,6 @@ def execute(args):
     baseline_suffix_str = natcap.invest.utils.make_suffix_string(
         baseline_args_dict, 'results_suffix')
 
-    field_list = ["usle_tot", "sed_export", "sed_dep", "avoid_exp", "avoid_eros"]
-    baseline_vector_path = os.path.join(
-        baseline_workspace, f'watershed_results_sdr{baseline_suffix_str}.shp')
     raster_name_list = [
         'avoided_erosion{0}.tif',
         'avoided_export{0}.tif',
@@ -158,26 +157,28 @@ def execute(args):
         os.path.join(baseline_workspace, _raster_name.format(baseline_suffix_str))
         for _raster_name in raster_name_list]
 
+    field_list = ["usle_tot", "sed_export", "sed_dep", "avoid_exp", "avoid_eros"]
+    results_df = pandas.DataFrame(columns=['scenario', 'id'] + field_list)
     for scenario, args_dict in scenario_args_dict.items():
-        if scenario == base_scenario:
-            continue
-
-        LOGGER.info(f'differencing for scenario {scenario}')
         scenario_workspace = args_dict['workspace_dir']
         scenario_suffix_str = natcap.invest.utils.make_suffix_string(
             args_dict, 'results_suffix')
         scenario_vector_path = os.path.join(
             scenario_workspace, f'watershed_results_sdr{scenario_suffix_str}.shp')
+        ws_vector = geopandas.read_file(scenario_vector_path)
+        df = ws_vector[field_list]
+        df.insert(0, 'scenario', [scenario])
+        df.insert(0, 'id', df.index)
+        results_df = pandas.concat([results_df, df])
+
+        if scenario == base_scenario:
+            continue
+
+        LOGGER.info(f'differencing for scenario {scenario}')
 
         target_workspace = os.path.join(workspace, scenario)
         if not os.path.exists(target_workspace):
             os.mkdir(target_workspace)
-
-        target_vector_path = os.path.join(
-            target_workspace, f'diff_watershed_results_sdr_{scenario}.gpkg')
-        difference_vectors(
-            baseline_vector_path, scenario_vector_path,
-            field_list, target_vector_path)
 
         scenario_raster_path_list = [
             os.path.join(scenario_workspace,
@@ -191,6 +192,10 @@ def execute(args):
             baseline_raster_path_list,
             scenario_raster_path_list,
             target_raster_path_list)
+
+    target_watersheds_table_path = os.path.join(workspace, 'watershed_results.csv')
+    long_df = pandas.melt(results_df, id_vars=['id', 'scenario'])
+    long_df.to_csv(target_watersheds_table_path, index=False)
 
 
 @validation.invest_validator
