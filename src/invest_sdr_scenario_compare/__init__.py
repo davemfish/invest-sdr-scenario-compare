@@ -1,3 +1,3 @@
-from .invest_sdr_scenario_compare import execute
-from .invest_sdr_scenario_compare import validate
-from .invest_sdr_scenario_compare import MODEL_SPEC
+from .sdr_scenario_compare import execute
+from .sdr_scenario_compare import validate
+from .sdr_scenario_compare import MODEL_SPEC

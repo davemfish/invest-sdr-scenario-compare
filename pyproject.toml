@@ -17,6 +17,9 @@ dependencies = [
 [tool.setuptools_scm]
 # Use default configuration. A warning is issued if this section is absent.
 
+[tool.setuptools.package-data]
+"invest_sdr_scenario_compare.templates" = ["*.jinja"]
+
 [tool.natcap.invest]
 # This is the plugin API version that this plugin uses.
 # invest uses this to determine whether it can run this plugin.

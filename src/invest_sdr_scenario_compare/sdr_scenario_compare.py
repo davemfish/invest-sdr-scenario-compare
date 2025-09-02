@@ -11,6 +11,8 @@ import numpy
 import pandas
 import pygeoprocessing
 
+from invest_sdr_scenario_compare import report_jinja
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -196,6 +198,8 @@ def execute(args):
     target_watersheds_table_path = os.path.join(workspace, 'watershed_results.csv')
     long_df = pandas.melt(results_df, id_vars=['id', 'scenario'])
     long_df.to_csv(target_watersheds_table_path, index=False)
+
+    report_jinja.report(args)
 
 
 @validation.invest_validator
