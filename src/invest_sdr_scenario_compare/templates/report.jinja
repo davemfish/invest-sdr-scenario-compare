@@ -4,65 +4,101 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="stylesheet" href="https://cdn.datatables.net/2.3.3/css/dataTables.dataTables.css" />
+        <link
+            rel="stylesheet"
+            href="https://cdn.datatables.net/2.3.3/css/dataTables.dataTables.css"
+        />
     </head>
     <body>
-    <div>
-        {{watersheds_data | safe}}
-    </div>
-    <script
-        src="https://code.jquery.com/jquery-3.7.1.min.js"
-        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
-        crossorigin="anonymous">
-    </script>
-    <script src="https://cdn.datatables.net/2.3.3/js/dataTables.min.js" type="text/javascript"></script>
-    <script type="text/javascript">
-        window.addEventListener('DOMContentLoaded', function () {
-            new DataTable('#watersheds', {
-                initComplete: function () {
-                    this.api()
-                        .columns('variable:title')
-                        .every(function () {
-                            let column = this;
+        <h3>Aggregated results by watershed</h3>
+        <div id="variable-select-container">
+            <label for="variable-select">Filter by variable: </label>
+        </div>
+        <div>
+            {{watersheds_data | safe}}
+        </div>
+        <script
+            src="https://code.jquery.com/jquery-3.7.1.min.js"
+            integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+            crossorigin="anonymous">
+        </script>
+        <script
+            src="https://cdn.datatables.net/2.3.3/js/dataTables.min.js"
+            type="text/javascript">
+        </script>
+        <script type="text/javascript">
+            window.addEventListener('DOMContentLoaded', function () {
+                new DataTable('#watersheds', {
+                    paging: false,
+                    layout: {
+                        topStart: null,
+                        topEnd: null,
+                        bottomStart: null,
+                        bottomEnd: null
+                    },
+                    columnDefs: [
+                      {
+                        targets: '_all',
+                        render: function (data, type, row, meta) {
+                            const number = parseFloat(data);
+                            let string = data
+                            if (!isNaN(number)) {
+                                string = number.toLocaleString(
+                                    undefined,
+                                    {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 2
+                                    });
+                            }
+                            return string;
+                        }
+                      }
+                    ],
+                    initComplete: function () {
+                        this.api()
+                            .columns('variable:title')
+                            .every(function () {
+                                let column = this;
 
-                            // Create select element
-                            let select = document.createElement('select');
-                            select.add(new Option(''));
-                            column.footer().replaceChildren(select);
-             
-                            // Apply listener for user change in value
-                            select.addEventListener('change', function () {
-                                column
-                                    .search(select.value, {exact: true})
-                                    .draw();
-                            });
-             
-                            // Add list of options
-                            column
-                                .data()
-                                .unique()
-                                .sort()
-                                .each(function (d, j) {
-                                    select.add(new Option(d));
+                                // Create select element
+                                let select = document.createElement('select');
+                                select.setAttribute('id', 'variable-select');
+                                select.add(new Option(''));
+                                document.getElementById('variable-select-container').append(select);
+                 
+                                // Apply listener for user change in value
+                                select.addEventListener('change', function () {
+                                    column
+                                        .search(select.value, {exact: true})
+                                        .draw();
                                 });
-                        });
-                }
+                 
+                                // Add list of options
+                                column
+                                    .data()
+                                    .unique()
+                                    .sort()
+                                    .each(function (d, j) {
+                                        select.add(new Option(d));
+                                    });
+                            });
+                    }
+                });
             });
-        });
-    </script>
-    <h3>Raster Results: Across Scenarios</h3>
-    {% for key, value in sdr_scenario_rasters.items() %}
-        <details>
-            <summary>{{ key|e }}</summary>
-            <img src="{{ value }}" />
-        </details>
-    {% endfor %}
-    <h3>Raster Results: Differences from base scenario</h3>
-    {% for key, value in sdr_diff_rasters.items() %}
-        <details>
-            <summary>{{ key|e }}</summary>
-            <img src="{{ value }}" />
-        </details>
-    {% endfor %}
+        </script>
+        <h3>Raster Results: Across Scenarios</h3>
+        {% for key, value in sdr_scenario_rasters.items() %}
+            <details>
+                <summary>{{ key|e }}</summary>
+                <img src="{{ value }}" />
+            </details>
+        {% endfor %}
+        <h3>Raster Results: Differences from base scenario</h3>
+        {% for key, value in sdr_diff_rasters.items() %}
+            <details>
+                <summary>{{ key|e }}</summary>
+                <img src="{{ value }}" />
+            </details>
+        {% endfor %}
     </body>
 </html>

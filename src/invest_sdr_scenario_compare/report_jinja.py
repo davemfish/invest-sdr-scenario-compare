@@ -10,6 +10,10 @@ import taskgraph
 
 from jinja2 import Environment, PackageLoader
 
+
+SCENARIO_COL_NAME = 'scenario'
+FID_COL_NAME = 'watershed_id'
+
 env = Environment(
     loader=PackageLoader('invest_sdr_scenario_compare', 'templates'))
 TEMPLATE = env.get_template('report.jinja')
@@ -62,7 +66,8 @@ def report(args):
         n_workers = -1  # Synchronous mode.
 
     task_graph = taskgraph.TaskGraph(
-        os.path.join(args['workspace_dir'], 'taskgraph_cache'), n_workers=n_workers)
+        os.path.join(args['workspace_dir'], 'taskgraph_cache'),
+        n_workers=n_workers)
 
     jinja_data = {}
     workspace_dir = args['workspace_dir']
@@ -75,11 +80,12 @@ def report(args):
 
     # png_path = plot_raster_png(os.path.join(
     #     workspace_dir, 'alternative', 'diff_sed_export_alternative.tif'))
-    
+
     watershed_results_table_path = os.path.join(
         workspace_dir, 'watershed_results.csv')
     results_df = pandas.read_csv(watershed_results_table_path)
-    wide_df = results_df.pivot(index=['id', 'variable'], columns='scenario', values='value')
+    wide_df = results_df.pivot(
+        index=[FID_COL_NAME, 'variable'], columns=SCENARIO_COL_NAME, values='value')
     wide_df.columns.name = None
     wide_df.reset_index(inplace=True)
     for _scen in scenarios_df.scenarios:
@@ -90,13 +96,10 @@ def report(args):
         ) * 100
     cols = list(wide_df.columns)
     cols.insert(0, cols.pop(cols.index(baseline_name)))
+    cols.insert(0, cols.pop(cols.index('variable')))
+    cols.insert(0, cols.pop(cols.index(FID_COL_NAME)))
     wide_df = wide_df[cols]
-    df_html = wide_df.to_html(table_id="watersheds", index=False)
-    idx = df_html.find('</table>')
-    footer_html = ''.join([f'<th></th>' for col in cols])
-    df_html = f'{df_html[:idx]}<tfoot><tr>{footer_html}</tr></tfoot>{df_html[idx:]}'
-    jinja_data['watersheds_data'] = df_html
-    # jinja_data['watersheds_data'] = wide_df.to_html(table_id="watersheds", index=False)
+    jinja_data['watersheds_data'] = wide_df.to_html(table_id="watersheds", index=False)
 
     raster_dtype_list = (
         ('avoided_erosion{suffix_str}.tif', 'continuous', 'linear'),
@@ -167,8 +170,3 @@ def report(args):
     with open(output_html_path, "w", encoding="utf-8") as output_file:
         output_file.write(TEMPLATE.render(jinja_data))
 
-
-if __name__ == '__main__':
-    logfile_path = 'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/scenario_compare2/InVEST-sdr_compare_scenarios-log-2025-08-29--10_22_56.txt'
-    _, ds_info = datastack.get_datastack_info(logfile_path)
-    report(ds_info.args)

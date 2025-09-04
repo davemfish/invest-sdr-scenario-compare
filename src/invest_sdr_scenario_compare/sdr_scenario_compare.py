@@ -14,6 +14,9 @@ import pygeoprocessing
 from invest_sdr_scenario_compare import report_jinja
 
 
+SCENARIO_COL_NAME = 'scenario'
+FID_COL_NAME = 'watershed_id'
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -160,7 +163,7 @@ def execute(args):
         for _raster_name in raster_name_list]
 
     field_list = ["usle_tot", "sed_export", "sed_dep", "avoid_exp", "avoid_eros"]
-    results_df = pandas.DataFrame(columns=['scenario', 'id'] + field_list)
+    results_df = pandas.DataFrame(columns=[SCENARIO_COL_NAME, FID_COL_NAME] + field_list)
     for scenario, args_dict in scenario_args_dict.items():
         scenario_workspace = args_dict['workspace_dir']
         scenario_suffix_str = natcap.invest.utils.make_suffix_string(
@@ -169,8 +172,8 @@ def execute(args):
             scenario_workspace, f'watershed_results_sdr{scenario_suffix_str}.shp')
         ws_vector = geopandas.read_file(scenario_vector_path)
         df = ws_vector[field_list]
-        df.insert(0, 'scenario', [scenario])
-        df.insert(0, 'id', df.index)
+        df.insert(0, SCENARIO_COL_NAME, [scenario])
+        df.insert(0, FID_COL_NAME, df.index)
         results_df = pandas.concat([results_df, df])
 
         if scenario == base_scenario:
@@ -196,7 +199,7 @@ def execute(args):
             target_raster_path_list)
 
     target_watersheds_table_path = os.path.join(workspace, 'watershed_results.csv')
-    long_df = pandas.melt(results_df, id_vars=['id', 'scenario'])
+    long_df = pandas.melt(results_df, id_vars=[FID_COL_NAME, SCENARIO_COL_NAME])
     long_df.to_csv(target_watersheds_table_path, index=False)
 
     report_jinja.report(args)
@@ -216,8 +219,8 @@ if __name__ == '__main__':
             'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/sdr_example/InVEST-sdr-log-2025-07-21--14_04_29.txt',
             'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/sdr_example_scenario/InVEST-sdr-log-2025-08-05--15_26_49.txt',
             'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/sdr_example_scenario2/InVEST-sdr-log-2025-08-06--15_50_25.txt']
-        }, index=False).to_csv(csv_path)
-    workspace = 'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/scenario_compare'
+        }).to_csv(csv_path, index=False)
+    workspace = 'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/scenario_compare2'
     args = {
         'scenarios': csv_path,
         'workspace_dir': workspace
