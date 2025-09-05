@@ -14,10 +14,6 @@ from jinja2 import Environment, PackageLoader
 SCENARIO_COL_NAME = 'scenario'
 FID_COL_NAME = 'watershed_id'
 
-env = Environment(
-    loader=PackageLoader('invest_sdr_scenario_compare', 'templates'))
-TEMPLATE = env.get_template('report.jinja')
-
 
 def plot_raster_png(raster_path):
     target_path = f'{os.path.splitext(raster_path)[0]}.png'
@@ -34,7 +30,7 @@ def plot_raster_png(raster_path):
 
 def save_figure(target_path, plot_func, plot_func_args):
     fig = plot_func(*plot_func_args)
-    fig.savefig(target_path)
+    fig.savefig(target_path, bbox_inches='tight')
 
 
 def plot_raster_diffs(workspace_dir, scenario_name):
@@ -56,7 +52,14 @@ def plot_raster_diffs(workspace_dir, scenario_name):
     return fig
 
 
-def report(args):
+def report(args, model_spec):
+    env = Environment(
+        loader=PackageLoader('invest_sdr_scenario_compare', 'templates'))
+    template = env.get_template('report.jinja')
+    stylesheet = env.get_template('style.css')
+    jinja_data = {}
+    jinja_data['custom_css'] = stylesheet.render()
+
     try:
         n_workers = int(args['n_workers'])
     except (KeyError, ValueError, TypeError):
@@ -69,7 +72,6 @@ def report(args):
         os.path.join(args['workspace_dir'], 'taskgraph_cache'),
         n_workers=n_workers)
 
-    jinja_data = {}
     workspace_dir = args['workspace_dir']
     images_dir = os.path.join(workspace_dir, '_images')
     if not os.path.exists(images_dir):
@@ -77,6 +79,12 @@ def report(args):
     output_html_path = os.path.join(workspace_dir, 'report.html')
     scenarios_df = pandas.read_csv(args['scenarios'])
     baseline_name = scenarios_df.scenarios[0]
+
+    jinja_data['scenarios'] = {
+        scen: log for scen, log in
+        zip(scenarios_df.scenarios[1:], scenarios_df.logfiles[1:])}
+    jinja_data['baseline_name'] = baseline_name
+    jinja_data['baseline_logfile'] = scenarios_df.logfiles[0]
 
     # png_path = plot_raster_png(os.path.join(
     #     workspace_dir, 'alternative', 'diff_sed_export_alternative.tif'))
@@ -99,6 +107,7 @@ def report(args):
     cols.insert(0, cols.pop(cols.index('variable')))
     cols.insert(0, cols.pop(cols.index(FID_COL_NAME)))
     wide_df = wide_df[cols]
+    jinja_data['watersheds_data_description'] = model_spec.outputs[0].about
     jinja_data['watersheds_data'] = wide_df.to_html(table_id="watersheds", index=False)
 
     raster_dtype_list = (
@@ -168,5 +177,5 @@ def report(args):
     task_graph.join()
 
     with open(output_html_path, "w", encoding="utf-8") as output_file:
-        output_file.write(TEMPLATE.render(jinja_data))
+        output_file.write(template.render(jinja_data))
 

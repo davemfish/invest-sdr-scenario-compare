@@ -8,15 +8,10 @@
             rel="stylesheet"
             href="https://cdn.datatables.net/2.3.3/css/dataTables.dataTables.css"
         />
-    </head>
-    <body>
-        <h3>Aggregated results by watershed</h3>
-        <div id="variable-select-container">
-            <label for="variable-select">Filter by variable: </label>
-        </div>
-        <div>
-            {{watersheds_data | safe}}
-        </div>
+        <link
+            rel="stylesheet"
+            href="https://cdn.datatables.net/buttons/3.2.4/css/buttons.dataTables.min.css"
+        />
         <script
             src="https://code.jquery.com/jquery-3.7.1.min.js"
             integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
@@ -26,6 +21,35 @@
             src="https://cdn.datatables.net/2.3.3/js/dataTables.min.js"
             type="text/javascript">
         </script>
+        <script
+            src="https://cdn.datatables.net/buttons/3.2.4/js/dataTables.buttons.min.js"
+            type="text/javascript">
+        </script>
+        <script
+            src="https://cdn.datatables.net/buttons/3.2.4/js/buttons.colVis.min.js"
+            type="text/javascript">
+        </script>
+    </head>
+    <body>
+        <style>
+            {{ custom_css }}
+        </style>
+        <h1>InVEST SDR Scenario Comparison Report</h1>
+        <p>Baseline Scenario:</p>
+        <li>"{{ baseline_name }}": {{ baseline_logfile }}</li>
+        <p>Other Scenarios:</p>
+        {% for scenario, logfile in scenarios.items() %}
+            <li>"{{ scenario }}": {{ logfile }}</li>
+        {% endfor %}
+
+        <h3>Aggregated results by watershed</h3>
+        <p> {{ watersheds_data_description }} </p>
+        <div id="variable-select-container">
+            <label for="variable-select">Filter by variable: </label>
+        </div>
+        <div>
+            {{watersheds_data | safe}}
+        </div>
         <script type="text/javascript">
             window.addEventListener('DOMContentLoaded', function () {
                 new DataTable('#watersheds', {
@@ -33,9 +57,12 @@
                     layout: {
                         topStart: null,
                         topEnd: null,
-                        bottomStart: null,
+                        bottomStart: {
+                            buttons: ['colvis']
+                        },
                         bottomEnd: null
                     },
+                    autoWidth: false,
                     columnDefs: [
                       {
                         targets: '_all',
@@ -60,20 +87,17 @@
                             .every(function () {
                                 let column = this;
 
-                                // Create select element
                                 let select = document.createElement('select');
                                 select.setAttribute('id', 'variable-select');
                                 select.add(new Option(''));
                                 document.getElementById('variable-select-container').append(select);
                  
-                                // Apply listener for user change in value
                                 select.addEventListener('change', function () {
                                     column
                                         .search(select.value, {exact: true})
                                         .draw();
                                 });
                  
-                                // Add list of options
                                 column
                                     .data()
                                     .unique()

@@ -57,12 +57,18 @@ MODEL_SPEC = spec.ModelSpec(
         ),
     ],
     outputs=[
-        # spec.SingleBandRasterOutput(
-        #     id="result.tif",
-        #     about="Raster multiplied by factor",
-        #     data_type=float,
-        #     units=None
-        # )
+        spec.CSVOutput(
+            id="watershed_results.csv",
+            path='watershed_results.csv',
+            about=(
+                """
+                The SDR model aggregated raster results by calculating the sum
+                total of all pixels within each watershed polygon. This table
+                includes those totals for each variable, for each scenario.
+                It also includes the percent change relative to the baseline
+                scenario.
+                """),
+        )
     ]
 )
 
@@ -202,7 +208,7 @@ def execute(args):
     long_df = pandas.melt(results_df, id_vars=[FID_COL_NAME, SCENARIO_COL_NAME])
     long_df.to_csv(target_watersheds_table_path, index=False)
 
-    report_jinja.report(args)
+    report_jinja.report(args, MODEL_SPEC)
 
 
 @validation.invest_validator
