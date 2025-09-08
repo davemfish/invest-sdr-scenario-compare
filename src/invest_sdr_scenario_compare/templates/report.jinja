@@ -35,13 +35,13 @@
             {{ custom_css }}
         </style>
         <h1>InVEST SDR Scenario Comparison Report</h1>
-        <p>Baseline Scenario:</p>
+        <h4>Baseline Scenario:</h4>
         <li>"{{ baseline_name }}": {{ baseline_logfile }}</li>
-        <p>Other Scenarios:</p>
+        <h4>Other Scenarios:</h4>
         {% for scenario, logfile in scenarios.items() %}
             <li>"{{ scenario }}": {{ logfile }}</li>
         {% endfor %}
-
+        <hr />
         <h3>Aggregated results by watershed</h3>
         <p> {{ watersheds_data_description }} </p>
         <div id="variable-select-container">
@@ -110,6 +110,7 @@
                 });
             });
         </script>
+        <hr />
         <h3>Raster Results: Across Scenarios</h3>
         {% for key, value in sdr_scenario_rasters.items() %}
             <details>
@@ -117,6 +118,7 @@
                 <img src="{{ value }}" />
             </details>
         {% endfor %}
+        <hr />
         <h3>Raster Results: Differences from base scenario</h3>
         {% for key, value in sdr_diff_rasters.items() %}
             <details>
