@@ -35,11 +35,21 @@
             {{ custom_css }}
         </style>
         <h1>InVEST SDR Scenario Comparison Report</h1>
+        <p>
+            In this report, the baseline scenario was compared
+            with each of the other scenarios.
+        </p>
         <h4>Baseline Scenario:</h4>
-        <li>"{{ baseline_name }}": {{ baseline_logfile }}</li>
+        <dl>
+            <dt>"{{ baseline_name }}"</dt>
+            <dd>{{ baseline_logfile }}</dd>
+        </dl>
         <h4>Other Scenarios:</h4>
         {% for scenario, logfile in scenarios.items() %}
-            <li>"{{ scenario }}": {{ logfile }}</li>
+        <dl>
+            <dt>"{{ scenario }}"</dt>
+            <dd>{{ logfile }}</dd>
+        </dl>
         {% endfor %}
         <hr />
         <h3>Aggregated results by watershed</h3>
@@ -112,6 +122,9 @@
         </script>
         <hr />
         <h3>Raster Results: Across Scenarios</h3>
+        <p>
+            Plots of the original SDR model results for each scenario.
+        </p>
         {% for key, value in sdr_scenario_rasters.items() %}
             <details>
                 <summary>{{ key|e }}</summary>
@@ -120,11 +133,24 @@
         {% endfor %}
         <hr />
         <h3>Raster Results: Differences from base scenario</h3>
+        <p>
+            Plots showing "scenario - baseline" for each variable.
+        </p>
         {% for key, value in sdr_diff_rasters.items() %}
             <details>
                 <summary>{{ key|e }}</summary>
                 <img src="{{ value }}" />
             </details>
         {% endfor %}
+        <h3>Metadata</h3>
+        <dl>
+        {% for output in model_spec_outputs %}
+            <dt>{{ output.path }}</dt>
+            <dd><p>{{ output.about }}</p></dd>
+            {% if output.units %}
+                <dd>Units: {{ output.units }}</dd>
+            {% endif %}
+        {% endfor %}
+        </dl>
     </body>
 </html>

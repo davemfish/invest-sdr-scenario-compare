@@ -107,6 +107,7 @@ def report(args, model_spec):
     cols.insert(0, cols.pop(cols.index('variable')))
     cols.insert(0, cols.pop(cols.index(FID_COL_NAME)))
     wide_df = wide_df[cols]
+    # TODO: update this to model_spec.get_output() when it's available.
     jinja_data['watersheds_data_description'] = model_spec.outputs[0].about
     jinja_data['watersheds_data'] = wide_df.to_html(table_id="watersheds", index=False)
 
@@ -172,10 +173,10 @@ def report(args, model_spec):
             # fig = plot_raster_diffs(workspace_dir, _scenario)
             # fig.savefig(png_path)
     jinja_data["sdr_diff_rasters"] = diff_fig_dict
+    jinja_data['model_spec_outputs'] = model_spec.outputs
 
     task_graph.close()
     task_graph.join()
 
     with open(output_html_path, "w", encoding="utf-8") as output_file:
         output_file.write(template.render(jinja_data))
-

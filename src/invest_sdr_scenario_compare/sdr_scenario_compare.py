@@ -7,6 +7,7 @@ import natcap.invest.utils
 from natcap.invest import datastack
 from natcap.invest import spec
 from natcap.invest import validation
+from natcap.invest.sdr import sdr
 import numpy
 import pandas
 import pygeoprocessing
@@ -18,7 +19,6 @@ SCENARIO_COL_NAME = 'scenario'
 FID_COL_NAME = 'watershed_id'
 
 LOGGER = logging.getLogger(__name__)
-
 
 MODEL_SPEC = spec.ModelSpec(
     model_id="sdr_compare_scenarios",
@@ -68,7 +68,49 @@ MODEL_SPEC = spec.ModelSpec(
                 It also includes the percent change relative to the baseline
                 scenario.
                 """),
-        )
+        ),
+        spec.SingleBandRasterOutput(
+            id="diff_avoided_erosion_[SCENARIO]",
+            path="[SCENARIO]/diff_avoided_erosion_[SCENARIO].tif",
+            about="Difference in avoided erosion (scenario - baseline).",
+            data_type=sdr.MODEL_SPEC.get_output('avoided_erosion').data_type,
+            units=sdr.MODEL_SPEC.get_output('avoided_erosion').units
+        ),
+        spec.SingleBandRasterOutput(
+            id="diff_avoided_export_[SCENARIO]",
+            path="[SCENARIO]/diff_avoided_export_[SCENARIO].tif",
+            about="Difference in avoided export (scenario - baseline).",
+            data_type=sdr.MODEL_SPEC.get_output('avoided_export').data_type,
+            units=sdr.MODEL_SPEC.get_output('avoided_export').units
+        ),
+        spec.SingleBandRasterOutput(
+            id="diff_rkls_[SCENARIO]",
+            path="[SCENARIO]/diff_rkls_[SCENARIO].tif",
+            about="Difference in RKLS (scenario - baseline).",
+            data_type=sdr.MODEL_SPEC.get_output('rkls').data_type,
+            units=sdr.MODEL_SPEC.get_output('rkls').units
+        ),
+        spec.SingleBandRasterOutput(
+            id="diff_sed_deposition_[SCENARIO]",
+            path="[SCENARIO]/diff_sed_deposition_[SCENARIO].tif",
+            about="Difference in sediment deposition (scenario - baseline).",
+            data_type=sdr.MODEL_SPEC.get_output('sed_deposition').data_type,
+            units=sdr.MODEL_SPEC.get_output('sed_deposition').units
+        ),
+        spec.SingleBandRasterOutput(
+            id="diff_sed_export_[SCENARIO]",
+            path="[SCENARIO]/diff_sed_export_[SCENARIO].tif",
+            about="Difference in sediment export (scenario - baseline).",
+            data_type=sdr.MODEL_SPEC.get_output('sed_export').data_type,
+            units=sdr.MODEL_SPEC.get_output('sed_export').units
+        ),
+        spec.SingleBandRasterOutput(
+            id="diff_usle_[SCENARIO]",
+            path="[SCENARIO]/diff_usle_[SCENARIO].tif",
+            about="Difference in USLE (scenario - baseline).",
+            data_type=sdr.MODEL_SPEC.get_output('usle').data_type,
+            units=sdr.MODEL_SPEC.get_output('usle').units
+        ),
     ]
 )
 
