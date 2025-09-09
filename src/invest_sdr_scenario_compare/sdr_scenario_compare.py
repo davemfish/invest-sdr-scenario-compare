@@ -1,3 +1,4 @@
+from collections import namedtuple
 import logging
 import os
 
@@ -174,30 +175,36 @@ def difference_rasters(base_raster_path_list,
             numpy.subtract, [b, a], target_path=target)
 
 
+def validate_comparable_scenarios(vector_path_list):
+    pass
+
+
 def execute(args):
     scenarios_df = natcap.invest.utils.read_csv_to_dataframe(args['scenarios'])
-    scenario_logfiles = {
-        k: v for k, v in zip(list(scenarios_df.scenarios), list(scenarios_df.logfiles))}
-    base_scenario = list(scenario_logfiles)[0]
+    scenario_logfiles_map = {
+        k: v for k, v in zip(
+            list(scenarios_df.scenarios), list(scenarios_df.logfiles))}
+    base_scenario_name = list(scenarios_df.scenarios)[0]
     LOGGER.info(scenarios_df)
-    LOGGER.info(f'Baseline scenario: {base_scenario}')
+    LOGGER.info(f'Baseline scenario: {base_scenario_name}')
 
     workspace = args['workspace_dir']
     if not os.path.exists(workspace):
         os.mkdir(workspace)
 
-    def get_args_dicts(logs_dict):
-        scen_args_dict = {}
-        for scenario, logfile_path in logs_dict.items():
-            _, ds_info = datastack.get_datastack_info(logfile_path)
-            scen_args_dict[scenario] = ds_info.args
-        return scen_args_dict
-
-    scenario_args_dict = get_args_dicts(scenario_logfiles)
-    baseline_args_dict = scenario_args_dict['baseline']
-    baseline_workspace = baseline_args_dict['workspace_dir']
-    baseline_suffix_str = natcap.invest.utils.make_suffix_string(
-        baseline_args_dict, 'results_suffix')
+    WorkspaceRegistry = namedtuple(
+        'WorkspaceRegistry', ['workspace', 'suffix', 'results_vector'])
+    workspace_registries = {}
+    for scenario, logfile_path in scenario_logfiles_map.items():
+        _, ds_info = datastack.get_datastack_info(logfile_path)
+        args_dict = ds_info.args
+        ws = args_dict['workspace_dir']
+        suffix = natcap.invest.utils.make_suffix_string(
+            args_dict, 'results_suffix')
+        vector_path = os.path.join(ws, f'watershed_results_sdr{suffix}.shp')
+        workspace_registries[scenario] = WorkspaceRegistry(ws, suffix, vector_path)
+    validate_comparable_scenarios(
+        [x.results_vector for x in workspace_registries.values()])
 
     raster_name_list = [
         'avoided_erosion{0}.tif',
@@ -207,24 +214,23 @@ def execute(args):
         'rkls{0}.tif',
         'usle{0}.tif']
     baseline_raster_path_list = [
-        os.path.join(baseline_workspace, _raster_name.format(baseline_suffix_str))
+        os.path.join(workspace_registries[base_scenario_name].workspace,
+                     _raster_name.format(
+                        workspace_registries[base_scenario_name].suffix))
         for _raster_name in raster_name_list]
 
     field_list = ["usle_tot", "sed_export", "sed_dep", "avoid_exp", "avoid_eros"]
-    results_df = pandas.DataFrame(columns=[SCENARIO_COL_NAME, FID_COL_NAME] + field_list)
-    for scenario, args_dict in scenario_args_dict.items():
-        scenario_workspace = args_dict['workspace_dir']
-        scenario_suffix_str = natcap.invest.utils.make_suffix_string(
-            args_dict, 'results_suffix')
-        scenario_vector_path = os.path.join(
-            scenario_workspace, f'watershed_results_sdr{scenario_suffix_str}.shp')
-        ws_vector = geopandas.read_file(scenario_vector_path)
+    results_df = pandas.DataFrame(
+        columns=[SCENARIO_COL_NAME, FID_COL_NAME] + field_list)
+    for scenario in workspace_registries:
+        ws_vector = geopandas.read_file(
+            workspace_registries[scenario].results_vector)
         df = ws_vector[field_list]
         df.insert(0, SCENARIO_COL_NAME, [scenario])
         df.insert(0, FID_COL_NAME, df.index)
         results_df = pandas.concat([results_df, df])
 
-        if scenario == base_scenario:
+        if scenario == base_scenario_name:
             continue
 
         LOGGER.info(f'differencing for scenario {scenario}')
@@ -234,8 +240,8 @@ def execute(args):
             os.mkdir(target_workspace)
 
         scenario_raster_path_list = [
-            os.path.join(scenario_workspace,
-                         raster_name.format(scenario_suffix_str))
+            os.path.join(workspace_registries[scenario].workspace,
+                         raster_name.format(workspace_registries[scenario].suffix))
             for raster_name in raster_name_list]
         target_raster_path_list = [
             os.path.join(target_workspace,
@@ -246,8 +252,10 @@ def execute(args):
             scenario_raster_path_list,
             target_raster_path_list)
 
-    target_watersheds_table_path = os.path.join(workspace, 'watershed_results.csv')
-    long_df = pandas.melt(results_df, id_vars=[FID_COL_NAME, SCENARIO_COL_NAME])
+    target_watersheds_table_path = os.path.join(
+        workspace, 'watershed_results.csv')
+    long_df = pandas.melt(
+        results_df, id_vars=[FID_COL_NAME, SCENARIO_COL_NAME])
     long_df.to_csv(target_watersheds_table_path, index=False)
 
     report_jinja.report(args, MODEL_SPEC)
