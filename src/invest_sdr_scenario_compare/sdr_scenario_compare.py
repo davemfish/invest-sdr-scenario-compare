@@ -176,7 +176,53 @@ def difference_rasters(base_raster_path_list,
 
 
 def validate_comparable_scenarios(vector_path_list):
-    pass
+    """Ensure that all vectors have the same features and geometry.
+
+    Raises:
+        ValueError if they do not.
+    """
+    base_vector = gdal.OpenEx(vector_path_list[0], gdal.OF_VECTOR | gdal.GA_ReadOnly)
+    base_layer = base_vector.GetLayer()
+    base_srs_wkt = base_layer.GetSpatialRef().ExportToWkt()
+    base_extent = base_layer.GetExtent()
+    base_n_features = base_layer.GetFeatureCount()
+
+    try:
+        for vector_path in vector_path_list[1:]:
+            vector = gdal.OpenEx(vector_path, gdal.OF_VECTOR | gdal.GA_ReadOnly)
+            layer = vector.GetLayer()
+            srs_wkt = layer.GetSpatialRef().ExportToWkt()
+            extent = layer.GetExtent()
+            n_features = layer.GetFeatureCount()
+            if srs_wkt != base_srs_wkt:
+                raise ValueError(
+                    f'Projection mismatch between {vector_path_list[0]} and'
+                    f' {vector_path}')
+            if n_features != base_n_features:
+                raise ValueError(
+                    f'Feature count mismatch between {vector_path_list[0]} and'
+                    f' {vector_path}')
+            if extent != base_extent:
+                raise ValueError(
+                    f'Extent mismatch between {vector_path_list[0]} and'
+                    f' {vector_path}')
+            for feature_a, feature_b in zip(base_layer, layer):
+                geom_a = feature_a.GetGeometryRef()
+                geom_b = feature_b.GetGeometryRef()
+                if not geom_a.Equals(geom_b):
+                    raise ValueError(
+                        f'Geometry mismatch between {vector_path_list[0]} and'
+                        f' {vector_path} for feature id {feature_a.GetFID()}')
+    except ValueError as e:
+        LOGGER.error(
+            'Scenarios cannot be directly compared because they represent'
+            ' different geographies.')
+        raise e
+    finally:
+        layer = None
+        vector = None
+        base_layer = None
+        base_vector = None
 
 
 def execute(args):
