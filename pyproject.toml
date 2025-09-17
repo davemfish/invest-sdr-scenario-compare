@@ -8,10 +8,12 @@ name = "invest-sdr-scenario-compare"
 # Using setuptools_scm is not required, but we highly recommend it
 dynamic = ["version"]  
 dependencies = [
+  "geopandas",
   "pygeoprocessing", 
-  "natcap.invest>=3.16.0",
+  "natcap.invest@git+https://github.com/natcap/invest.git@main", # for latest sdr.MODEL_SPEC
   "numpy",
-  "invest-reports@git+https://github.com/natcap/invest-reports.git@main"
+  "invest-reports@git+https://github.com/natcap/invest-reports.git@main",
+  "matplotlib"
 ]
 
 [tool.setuptools_scm]
