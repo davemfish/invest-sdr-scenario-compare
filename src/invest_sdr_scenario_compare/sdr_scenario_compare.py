@@ -1,4 +1,5 @@
 from collections import namedtuple
+import json
 import logging
 import os
 
@@ -22,32 +23,18 @@ FID_COL_NAME = 'watershed_id'
 LOGGER = logging.getLogger(__name__)
 
 
-# implemented this because ModelSpec.get_output method
-# does not exist yet.
-# TODO: replace this when the API is available.
-def _get_output_spec(model_spec, key):
-    return {_output.id: _output for _output in model_spec.outputs}[key]
-
-
 MODEL_SPEC = spec.ModelSpec(
+    module_name=__name__,
     model_id="sdr_compare_scenarios",
     model_title="SDR Compare Scenarios",
     userguide='',
     input_field_order=[
-        ['workspace_dir'],
+        ['workspace_dir', 'results_suffix'],
         ['scenarios']],
     inputs=[
-        spec.DirectoryInput(
-            id="workspace_dir",
-            name="workspace",
-            about=(
-                "The folder where all the model's output files will be written. If "
-                "this folder does not exist, it will be created. If data already "
-                "exists in the folder, it will be overwritten."),
-            contents=[],
-            must_exist=False,
-            permissions="rwx"
-        ),
+        spec.WORKSPACE,
+        spec.SUFFIX,
+        spec.N_WORKERS,
         spec.CSVInput(
             id="scenarios",
             name="Completed Scenarios",
@@ -66,6 +53,7 @@ MODEL_SPEC = spec.ModelSpec(
         ),
     ],
     outputs=[
+        spec.TASKGRAPH_CACHE,
         spec.CSVOutput(
             id="watershed_results.csv",
             path='watershed_results.csv',
@@ -82,43 +70,43 @@ MODEL_SPEC = spec.ModelSpec(
             id="diff_avoided_erosion_[SCENARIO]",
             path="[SCENARIO]/diff_avoided_erosion_[SCENARIO].tif",
             about="Difference in avoided erosion (scenario - baseline).",
-            data_type=_get_output_spec(sdr.MODEL_SPEC, 'avoided_erosion').data_type,
-            units=_get_output_spec(sdr.MODEL_SPEC, 'avoided_erosion').units
+            data_type=sdr.MODEL_SPEC.get_output('avoided_erosion').data_type,
+            units=sdr.MODEL_SPEC.get_output('avoided_erosion').units
         ),
         spec.SingleBandRasterOutput(
             id="diff_avoided_export_[SCENARIO]",
             path="[SCENARIO]/diff_avoided_export_[SCENARIO].tif",
             about="Difference in avoided export (scenario - baseline).",
-            data_type=_get_output_spec(sdr.MODEL_SPEC, 'avoided_export').data_type,
-            units=_get_output_spec(sdr.MODEL_SPEC, 'avoided_export').units
+            data_type=sdr.MODEL_SPEC.get_output('avoided_export').data_type,
+            units=sdr.MODEL_SPEC.get_output('avoided_export').units
         ),
         spec.SingleBandRasterOutput(
             id="diff_rkls_[SCENARIO]",
             path="[SCENARIO]/diff_rkls_[SCENARIO].tif",
             about="Difference in RKLS (scenario - baseline).",
-            data_type=_get_output_spec(sdr.MODEL_SPEC, 'rkls').data_type,
-            units=_get_output_spec(sdr.MODEL_SPEC, 'rkls').units
+            data_type=sdr.MODEL_SPEC.get_output('rkls').data_type,
+            units=sdr.MODEL_SPEC.get_output('rkls').units
         ),
         spec.SingleBandRasterOutput(
             id="diff_sed_deposition_[SCENARIO]",
             path="[SCENARIO]/diff_sed_deposition_[SCENARIO].tif",
             about="Difference in sediment deposition (scenario - baseline).",
-            data_type=_get_output_spec(sdr.MODEL_SPEC, 'sed_deposition').data_type,
-            units=_get_output_spec(sdr.MODEL_SPEC, 'sed_deposition').units
+            data_type=sdr.MODEL_SPEC.get_output('sed_deposition').data_type,
+            units=sdr.MODEL_SPEC.get_output('sed_deposition').units
         ),
         spec.SingleBandRasterOutput(
             id="diff_sed_export_[SCENARIO]",
             path="[SCENARIO]/diff_sed_export_[SCENARIO].tif",
             about="Difference in sediment export (scenario - baseline).",
-            data_type=_get_output_spec(sdr.MODEL_SPEC, 'sed_export').data_type,
-            units=_get_output_spec(sdr.MODEL_SPEC, 'sed_export').units
+            data_type=sdr.MODEL_SPEC.get_output('sed_export').data_type,
+            units=sdr.MODEL_SPEC.get_output('sed_export').units
         ),
         spec.SingleBandRasterOutput(
             id="diff_usle_[SCENARIO]",
             path="[SCENARIO]/diff_usle_[SCENARIO].tif",
             about="Difference in USLE (scenario - baseline).",
-            data_type=_get_output_spec(sdr.MODEL_SPEC, 'usle').data_type,
-            units=_get_output_spec(sdr.MODEL_SPEC, 'usle').units
+            data_type=sdr.MODEL_SPEC.get_output('usle').data_type,
+            units=sdr.MODEL_SPEC.get_output('usle').units
         ),
     ]
 )
@@ -234,6 +222,7 @@ def validate_comparable_scenarios(vector_path_list):
 
 
 def execute(args):
+    args, file_registry, task_graph = MODEL_SPEC.setup(args)
     scenarios_df = natcap.invest.utils.read_csv_to_dataframe(args['scenarios'])
     scenario_logfiles_map = {
         k: v for k, v in zip(
@@ -242,43 +231,46 @@ def execute(args):
     LOGGER.info(scenarios_df)
     LOGGER.info(f'Baseline scenario: {base_scenario_name}')
 
-    workspace = args['workspace_dir']
-    if not os.path.exists(workspace):
-        os.mkdir(workspace)
+    # workspace = args['workspace_dir']
+    # if not os.path.exists(workspace):
+    #     os.mkdir(workspace)
 
     WorkspaceRegistry = namedtuple(
-        'WorkspaceRegistry', ['workspace', 'suffix', 'results_vector'])
+        'WorkspaceRegistry', ['workspace', 'file_registry'])
     workspace_registries = {}
     for scenario, logfile_path in scenario_logfiles_map.items():
         _, ds_info = datastack.get_datastack_info(logfile_path)
         args_dict = ds_info.args
         ws = args_dict['workspace_dir']
-        suffix = natcap.invest.utils.make_suffix_string(
-            args_dict, 'results_suffix')
-        vector_path = os.path.join(ws, f'watershed_results_sdr{suffix}.shp')
-        workspace_registries[scenario] = WorkspaceRegistry(ws, suffix, vector_path)
+        suffix = args_dict['results_suffix']
+        with open(os.path.join(ws, f'file_registry{args["results_suffix"]}.json'), 'r') as file:
+            scenario_registry = json.loads(file.read())
+        # suffix = natcap.invest.utils.make_suffix_string(
+        #     args_dict, 'results_suffix')
+        # vector_path = file_registry['watershed_results_sdr']
+        workspace_registries[scenario] = WorkspaceRegistry(ws, scenario_registry)
+    
+    watershed_results_id = 'watershed_results_sdr'
     validate_comparable_scenarios(
-        [x.results_vector for x in workspace_registries.values()])
+        [x.file_registry[watershed_results_id] for x in workspace_registries.values()])
 
-    raster_name_list = [
-        'avoided_erosion{0}.tif',
-        'avoided_export{0}.tif',
-        'sed_deposition{0}.tif',
-        'sed_export{0}.tif',
-        'rkls{0}.tif',
-        'usle{0}.tif']
+    raster_id_list = [
+        'avoided_erosion',
+        'avoided_export',
+        'sed_deposition',
+        'sed_export',
+        'rkls',
+        'usle']
     baseline_raster_path_list = [
-        os.path.join(workspace_registries[base_scenario_name].workspace,
-                     _raster_name.format(
-                        workspace_registries[base_scenario_name].suffix))
-        for _raster_name in raster_name_list]
+        workspace_registries[base_scenario_name].file_registry[_raster_id]
+        for _raster_id in raster_id_list]
 
     field_list = ["usle_tot", "sed_export", "sed_dep", "avoid_exp", "avoid_eros"]
     results_df = pandas.DataFrame(
         columns=[SCENARIO_COL_NAME, FID_COL_NAME] + field_list)
     for scenario in workspace_registries:
         ws_vector = geopandas.read_file(
-            workspace_registries[scenario].results_vector)
+            workspace_registries[scenario].file_registry[watershed_results_id])
         df = ws_vector[field_list]
         df.insert(0, SCENARIO_COL_NAME, [scenario])
         df.insert(0, FID_COL_NAME, df.index)
@@ -289,34 +281,33 @@ def execute(args):
 
         LOGGER.info(f'differencing for scenario {scenario}')
 
-        target_workspace = os.path.join(workspace, scenario)
+        target_workspace = os.path.join(args['workspace_dir'], scenario)
         if not os.path.exists(target_workspace):
             os.mkdir(target_workspace)
 
         scenario_raster_path_list = [
-            os.path.join(workspace_registries[scenario].workspace,
-                         raster_name.format(workspace_registries[scenario].suffix))
-            for raster_name in raster_name_list]
+            workspace_registries[scenario].file_registry[_raster_id]
+            for _raster_id in raster_id_list]
         target_raster_path_list = [
             os.path.join(target_workspace,
-                         f'diff_{raster_name}'.format(f'_{scenario}'))
-            for raster_name in raster_name_list]
+                         f'diff_{_raster_id}_{scenario}.tif')
+            for _raster_id in raster_id_list]
         difference_rasters(
             baseline_raster_path_list,
             scenario_raster_path_list,
             target_raster_path_list)
 
-    target_watersheds_table_path = os.path.join(
-        workspace, 'watershed_results.csv')
+    # target_watersheds_table_path = os.path.join(
+    #     workspace, 'watershed_results.csv')
     long_df = pandas.melt(
         results_df, id_vars=[FID_COL_NAME, SCENARIO_COL_NAME])
-    long_df.to_csv(target_watersheds_table_path, index=False)
+    long_df.to_csv(file_registry['watershed_results.csv'], index=False)
 
     report_jinja.report(args, MODEL_SPEC)
 
 
 @validation.invest_validator
-def validate(args):
+def validate(args, limit_to=None):
     return validation.validate(args, MODEL_SPEC)
 
 
