@@ -1,9 +1,6 @@
 import os
-import sys
 
 from invest_reports import utils
-from natcap.invest import datastack
-import matplotlib
 import matplotlib.pyplot as plt
 import pandas
 import taskgraph
@@ -13,19 +10,6 @@ from jinja2 import Environment, PackageLoader
 
 SCENARIO_COL_NAME = 'scenario'
 FID_COL_NAME = 'watershed_id'
-
-
-def plot_raster_png(raster_path):
-    target_path = f'{os.path.splitext(raster_path)[0]}.png'
-    fig, ax = plt.subplots()  # Create a figure containing a single Axes.
-    arr, resampled = utils.read_masked_array(raster_path, 'bilinear')
-    mappable = ax.imshow(arr, cmap='viridis')
-    fig.colorbar(mappable, ax=ax)
-    ax.set(
-        title="FOO\nsubtitle")
-    ax.set_axis_off()
-    plt.savefig(target_path)
-    return target_path
 
 
 def save_figure(target_path, plot_func, plot_func_args):
@@ -52,13 +36,7 @@ def plot_raster_diffs(workspace_dir, scenario_name):
     return fig
 
 
-def report(args, model_spec):
-    env = Environment(
-        loader=PackageLoader('invest_sdr_scenario_compare', 'templates'))
-    template = env.get_template('report.jinja')
-    stylesheet = env.get_template('style.css')
-    jinja_data = {}
-    jinja_data['custom_css'] = stylesheet.render()
+def report(args, model_spec, file_registry, workspace_registries):
 
     try:
         n_workers = int(args['n_workers'])
@@ -72,33 +50,26 @@ def report(args, model_spec):
         os.path.join(args['workspace_dir'], 'taskgraph_cache'),
         n_workers=n_workers)
 
-    workspace_dir = args['workspace_dir']
-    images_dir = os.path.join(workspace_dir, '_images')
+    images_dir = os.path.join(args['workspace_dir'], '_images')
     if not os.path.exists(images_dir):
         os.mkdir(images_dir)
-    output_html_path = os.path.join(workspace_dir, 'report.html')
+    output_html_path = os.path.join(args['workspace_dir'], 'report.html')
     scenarios_df = pandas.read_csv(args['scenarios'])
-    baseline_name = scenarios_df.scenarios[0]
+    scenario_names = list(scenarios_df.scenarios)
+    baseline_name = scenario_names.pop(0)
+    logfiles = list(scenarios_df.logfiles)
+    baseline_logfile = logfiles.pop(0)
 
-    jinja_data['scenarios'] = {
+    scenario_dict = {
         scen: log for scen, log in
-        zip(scenarios_df.scenarios[1:], scenarios_df.logfiles[1:])}
-    jinja_data['baseline_name'] = baseline_name
-    jinja_data['baseline_logfile'] = scenarios_df.logfiles[0]
+        zip(scenario_names, logfiles)}
 
-    # png_path = plot_raster_png(os.path.join(
-    #     workspace_dir, 'alternative', 'diff_sed_export_alternative.tif'))
-
-    watershed_results_table_path = os.path.join(
-        workspace_dir, 'watershed_results.csv')
-    results_df = pandas.read_csv(watershed_results_table_path)
+    results_df = pandas.read_csv(file_registry['watershed_results.csv'])
     wide_df = results_df.pivot(
         index=[FID_COL_NAME, 'variable'], columns=SCENARIO_COL_NAME, values='value')
     wide_df.columns.name = None
     wide_df.reset_index(inplace=True)
-    for _scen in scenarios_df.scenarios:
-        if _scen == baseline_name:
-            continue
+    for _scen in scenario_names:
         wide_df[f'{_scen}_percent_change'] = (
             (wide_df[_scen] - wide_df[baseline_name]) / wide_df[baseline_name]
         ) * 100
@@ -107,76 +78,82 @@ def report(args, model_spec):
     cols.insert(0, cols.pop(cols.index('variable')))
     cols.insert(0, cols.pop(cols.index(FID_COL_NAME)))
     wide_df = wide_df[cols]
-    # TODO: update this to model_spec.get_output() when it's available.
-    jinja_data['watersheds_data_description'] = model_spec.outputs[0].about
-    jinja_data['watersheds_data'] = wide_df.to_html(table_id="watersheds", index=False)
+    watersheds_table = wide_df.to_html(table_id="watersheds", index=False)
 
     raster_dtype_list = (
-        ('avoided_erosion{suffix_str}.tif', 'continuous', 'linear'),
-        ('avoided_export{suffix_str}.tif', 'continuous', 'log'),
-        ('sed_deposition{suffix_str}.tif', 'continuous', 'log'),
-        ('sed_export{suffix_str}.tif', 'continuous', 'log'),
-        ('rkls{suffix_str}.tif', 'continuous', 'linear'),
-        ('usle{suffix_str}.tif', 'continuous', 'log')
+        ('avoided_erosion', 'continuous', 'linear'),
+        ('avoided_export', 'continuous', 'log'),
+        ('sed_deposition', 'continuous', 'log'),
+        ('sed_export', 'continuous', 'log'),
+        ('rkls', 'continuous', 'linear'),
+        ('usle', 'continuous', 'log')
     )
 
-    fig_dict = {}
-    for raster_tuple in raster_dtype_list:
+    sdr_raster_fig_per_scenario = {}
+    for (raster_id, datatype, transform) in raster_dtype_list:
         tif_list = []
-        title_list = []
+        subtitle_list = []
         for _, row in scenarios_df.iterrows():
             scenario = row.scenarios
-            title_list.append(scenario)
-            logfile = row.logfiles
-            _, ds_info = datastack.get_datastack_info(logfile)
-            ws = ds_info.args['workspace_dir']
-            suffix = ds_info.args['results_suffix']
+            subtitle_list.append(scenario)
+            scenario_file_reg = workspace_registries[scenario].file_registry
             tif_list.append(
-                os.path.join(ws, raster_tuple[0].format(suffix_str=suffix)))
-            datatype = raster_tuple[1]
-            transform = raster_tuple[2]
+                scenario_file_reg[raster_id])
         png_path = os.path.join(
-            images_dir, f'{os.path.splitext(raster_tuple[0])[0]}.png')
-        fig_dict[raster_tuple[0]] = png_path
+            images_dir, f'{raster_id}.png')
+        sdr_raster_fig_per_scenario[raster_id] = png_path
         task_graph.add_task(
             func=save_figure,
             kwargs={
                 'target_path': png_path,
                 'plot_func': utils.plot_raster_facets,
-                'plot_func_args': (tif_list, datatype, transform, title_list)
+                'plot_func_args': (tif_list, datatype, transform, subtitle_list)
             },
             target_path_list=[png_path],
-            task_name=f'save_figure_{raster_tuple[0]}'
+            task_name=f'save_figure_{raster_id}'
         )
-        # fig = utils.plot_raster_facets(
-        #     tif_list, datatype, transform=transform, subtitle_list=title_list)
-        # fig.savefig(png_path)
 
-    jinja_data["sdr_scenario_rasters"] = fig_dict
+    for key, png_path in sdr_raster_fig_per_scenario.items():
+        sdr_raster_fig_per_scenario[key] = utils.base64_encode_file(png_path)
 
-    diff_fig_dict = {}
-    for _scenario in scenarios_df.scenarios:
-        if _scenario != baseline_name:
-            png_name = f'diff_{_scenario}.png'
-            png_path = os.path.join(images_dir, png_name)
-            diff_fig_dict[_scenario] = png_path
-            task_graph.add_task(
-                func=save_figure,
-                kwargs={
-                    'target_path': png_path,
-                    'plot_func': plot_raster_diffs,
-                    'plot_func_args': (workspace_dir, _scenario)
-                },
-                target_path_list=[png_path],
-                task_name=f'save_figure_{png_name}'
-            )
-            # fig = plot_raster_diffs(workspace_dir, _scenario)
-            # fig.savefig(png_path)
-    jinja_data["sdr_diff_rasters"] = diff_fig_dict
-    jinja_data['model_spec_outputs'] = model_spec.outputs
+    diff_figure_per_scenario = {}
+    for scenario in scenario_names:
+        png_name = f'diff_{scenario}.png'
+        png_path = os.path.join(images_dir, png_name)
+        diff_figure_per_scenario[scenario] = png_path
+        task_graph.add_task(
+            func=save_figure,
+            kwargs={
+                'target_path': png_path,
+                'plot_func': plot_raster_diffs,
+                'plot_func_args': (args['workspace_dir'], scenario)
+            },
+            target_path_list=[png_path],
+            task_name=f'save_figure_{png_name}'
+        )
 
     task_graph.close()
     task_graph.join()
 
+    # Read pngs into memory so they can be embedded in html
+    for key, png_path in diff_figure_per_scenario.items():
+        diff_figure_per_scenario[key] = utils.base64_encode_file(png_path)
+
+    env = Environment(
+        loader=PackageLoader('invest_sdr_scenario_compare', 'templates'))
+    template = env.get_template('report.jinja')
+    invest_reports_env = env = Environment(
+        loader=PackageLoader('invest_reports', 'jinja_templates'))
+
     with open(output_html_path, "w", encoding="utf-8") as output_file:
-        output_file.write(template.render(jinja_data))
+        output_file.write(template.render({
+            'baseline_name': baseline_name,
+            'baseline_logfile': baseline_logfile,
+            'scenarios': scenario_dict,
+            'watersheds_data_description': model_spec.get_output('watershed_results.csv').about,
+            'watersheds_data': watersheds_table,
+            'sdr_scenario_rasters': sdr_raster_fig_per_scenario,
+            'sdr_diff_rasters': diff_figure_per_scenario,
+            'model_spec_outputs': model_spec.outputs,
+            'invest_reports_env': invest_reports_env,
+        }))

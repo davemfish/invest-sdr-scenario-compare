@@ -1,4 +1,4 @@
-<!-- https://stackoverflow.com/questions/44487043/python-and-jinja2-import-template-of-another-environment -->
+{% from invest_reports_env.get_template('raster-plot-img.html') import raster_plot_img %}
 <!DOCTYPE html>
 <html>
     <head>
@@ -29,11 +29,11 @@
             src="https://cdn.datatables.net/buttons/3.2.4/js/buttons.colVis.min.js"
             type="text/javascript">
         </script>
+        {% block styles %}
+            {% include 'style.html' %}
+        {% endblock styles %}
     </head>
     <body>
-        <style>
-            {{ custom_css }}
-        </style>
         <h1>InVEST SDR Scenario Comparison Report</h1>
         <p>
             In this report, the baseline scenario was compared
@@ -128,7 +128,7 @@
         {% for key, value in sdr_scenario_rasters.items() %}
             <details>
                 <summary>{{ key|e }}</summary>
-                <img src="{{ value }}" />
+                {{ raster_plot_img(value) }}
             </details>
         {% endfor %}
         <hr />
@@ -139,18 +139,20 @@
         {% for key, value in sdr_diff_rasters.items() %}
             <details>
                 <summary>{{ key|e }}</summary>
-                <img src="{{ value }}" />
+                {{ raster_plot_img(value) }}
             </details>
         {% endfor %}
-        <h3>Metadata</h3>
-        <dl>
-        {% for output in model_spec_outputs %}
-            <dt>{{ output.path }}</dt>
-            <dd><p>{{ output.about }}</p></dd>
-            {% if output.units %}
-                <dd>Units: {{ output.units }}</dd>
-            {% endif %}
-        {% endfor %}
-        </dl>
+        <details>
+            <summary>Metadata</summary>
+            <dl>
+            {% for output in model_spec_outputs %}
+                <dt>{{ output.path }}</dt>
+                <dd><p>{{ output.about }}</p></dd>
+                {% if output.units %}
+                    <dd>Units: {{ output.units }}</dd>
+                {% endif %}
+            {% endfor %}
+            </dl>
+        </details>
     </body>
 </html>

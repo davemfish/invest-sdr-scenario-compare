@@ -22,6 +22,10 @@ FID_COL_NAME = 'watershed_id'
 
 LOGGER = logging.getLogger(__name__)
 
+# I'd rather not support use of a results suffix in this plugin,
+# but invest requires it be in the MODEL_SPEC
+RESULTS_SUFFIX = spec.SUFFIX
+RESULTS_SUFFIX.hidden = True
 
 MODEL_SPEC = spec.ModelSpec(
     module_name=__name__,
@@ -29,11 +33,10 @@ MODEL_SPEC = spec.ModelSpec(
     model_title="SDR Compare Scenarios",
     userguide='',
     input_field_order=[
-        ['workspace_dir', 'results_suffix'],
-        ['scenarios']],
+        ['workspace_dir', 'scenarios']],
     inputs=[
         spec.WORKSPACE,
-        spec.SUFFIX,
+        RESULTS_SUFFIX,
         spec.N_WORKERS,
         spec.CSVInput(
             id="scenarios",
@@ -289,8 +292,9 @@ def execute(args):
             workspace_registries[scenario].file_registry[_raster_id]
             for _raster_id in raster_id_list]
         target_raster_path_list = [
-            os.path.join(target_workspace,
-                         f'diff_{_raster_id}_{scenario}.tif')
+            file_registry[(f'diff_{_raster_id}_[SCENARIO]', scenario)]
+            # os.path.join(target_workspace,
+            #              f'diff_{_raster_id}_{scenario}.tif')
             for _raster_id in raster_id_list]
         difference_rasters(
             baseline_raster_path_list,
@@ -303,7 +307,8 @@ def execute(args):
         results_df, id_vars=[FID_COL_NAME, SCENARIO_COL_NAME])
     long_df.to_csv(file_registry['watershed_results.csv'], index=False)
 
-    report_jinja.report(args, MODEL_SPEC)
+    report_jinja.report(args, MODEL_SPEC, file_registry, workspace_registries)
+    return file_registry.registry
 
 
 @validation.invest_validator
