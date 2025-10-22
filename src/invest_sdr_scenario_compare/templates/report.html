@@ -1,0 +1,39 @@
+{% extends invest_reports_env.get_template('base.html') %}
+{% from invest_reports_env.get_template('raster-plot-img.html') import raster_plot_img %}
+{% from invest_reports_env.get_template('content-grid.html') import content_grid %}
+{% from invest_reports_env.get_template('metadata.html') import list_metadata %}
+
+{% block page_title %}
+  {{ model_name }}
+{% endblock page_title %}
+
+{% block content %}
+  
+  <h1>InVEST SDR Scenario Comparison Report</h1>
+  <p>
+      In this report, the baseline scenario was compared
+      with each of the other scenarios. The first row of the
+      scenarios csv is always treated as the baseline scenario.
+  </p>
+  {{ scenario_table_html | safe}}
+
+  <h2 class="section-header">Raster Results: Differences from the baseline scenario</h2>
+  <h4>Plots showing "scenario - baseline" for each variable.</h4>
+  {% for key, value in sdr_diff_rasters.items() %}
+    {{ accordion_section(key, raster_plot_img(value, key)) }}
+  {% endfor %}
+
+  <h2 class="section-header">Original SDR raster results across scenarios</h2>
+  {% for key, value in sdr_scenario_rasters.items() %}
+    {{ accordion_section(key, raster_plot_img(value, key)) }}
+  {% endfor %}
+
+  <h2 class="section-header">Metadata</h2>
+  {{ 
+    accordion_section(
+      'Descriptions of files',
+      list_metadata(model_spec_outputs)
+    )
+  }}
+
+{% endblock content %}
