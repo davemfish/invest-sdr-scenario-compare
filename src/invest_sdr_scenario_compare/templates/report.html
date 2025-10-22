@@ -25,7 +25,10 @@
 
   <h2 class="section-header">Aggregated results by watershed</h2>
   <p> {{ watersheds_data_description }} </p>
-  {{ datatable(watersheds_data, watersheds_table_id) }}
+  {{ datatable(
+      watersheds_data,
+      watersheds_table_id,
+      watersheds_table_filter_by_column) }}
 
   <h2 class="section-header">Raster Results: Differences from the baseline scenario</h2>
   <h4>Plots showing "scenario - baseline" for each variable.</h4>

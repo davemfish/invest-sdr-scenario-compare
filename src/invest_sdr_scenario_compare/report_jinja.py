@@ -59,8 +59,9 @@ def report(args, model_spec, file_registry, workspace_registries):
     scenario_table_html = scenarios_df.to_html(index=False)
 
     results_df = pandas.read_csv(file_registry['watershed_results.csv'])
+    variable_name = 'variable'
     wide_df = results_df.pivot(
-        index=[FID_COL_NAME, 'variable'],
+        index=[FID_COL_NAME, variable_name],
         columns=SCENARIO_COL_NAME,
         values='value')
     wide_df.columns.name = None
@@ -71,7 +72,7 @@ def report(args, model_spec, file_registry, workspace_registries):
         ) * 100
     cols = list(wide_df.columns)
     cols.insert(0, cols.pop(cols.index(baseline_name)))
-    cols.insert(0, cols.pop(cols.index('variable')))
+    cols.insert(0, cols.pop(cols.index(variable_name)))
     cols.insert(0, cols.pop(cols.index(FID_COL_NAME)))
     wide_df = wide_df[cols]
     watersheds_table_id = 'watersheds'  # for the element id
@@ -150,6 +151,7 @@ def report(args, model_spec, file_registry, workspace_registries):
                 'watershed_results.csv').about,
             watersheds_data=watersheds_table,
             watersheds_table_id=watersheds_table_id,
+            watersheds_table_filter_by_column=variable_name,
             sdr_scenario_rasters=sdr_raster_fig_per_scenario,
             sdr_diff_rasters=diff_figure_per_scenario,
             model_spec_outputs=model_spec.outputs,
