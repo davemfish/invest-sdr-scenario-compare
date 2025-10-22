@@ -42,17 +42,20 @@ MODEL_SPEC = spec.ModelSpec(
             id="scenarios",
             name="Completed Scenarios",
             about=(
-                "Make a CSV with two columns: 'scenarios' and 'logfiles'.\n"
-                " Each row represents a scenario. The 'scenarios' column should"
+                "Make a CSV with three columns: 'name', 'description', and 'logfile'.\n"
+                " Each row represents a scenario. The 'name' column should"
                 " be a simple label to describe that scenario, for example,"
-                " 'baseline'. The 'logfiles' column should be the path to the"
+                " 'baseline'. 'description' should be a text description of the"
+                " scenario and how it differs from the baseline scenario."
+                " The 'logfile' column should be the path to the"
                 " InVEST logfile (.txt file) that was generated when the"
                 " SDR model was run. Include as many rows as desired."
                 " The first row will be treated as the baseline scenario to"
                 " which all other scenarios are compared."),
             columns=[
-                spec.StringInput(id='scenarios'),
-                spec.FileInput(id='logfiles')]
+                spec.StringInput(id='name'),
+                spec.StringInput(id='description'),
+                spec.FileInput(id='logfile')]
         ),
     ],
     outputs=[
@@ -62,11 +65,10 @@ MODEL_SPEC = spec.ModelSpec(
             path='watershed_results.csv',
             about=(
                 """
-                The SDR model aggregated raster results by calculating the sum
-                total of all pixels within each watershed polygon. This table
-                includes those totals for each variable, for each scenario.
-                It also includes the percent change relative to the baseline
-                scenario.
+                This table includes aggregated results from the original SDR
+                scenarios as well as calcuations of the percent change from the
+                baseline scenario. Positive percent_change values indicate an
+                increase relative to the baseline scenario.
                 """),
         ),
         spec.SingleBandRasterOutput(
@@ -229,14 +231,10 @@ def execute(args):
     scenarios_df = natcap.invest.utils.read_csv_to_dataframe(args['scenarios'])
     scenario_logfiles_map = {
         k: v for k, v in zip(
-            list(scenarios_df.scenarios), list(scenarios_df.logfiles))}
-    base_scenario_name = list(scenarios_df.scenarios)[0]
+            list(scenarios_df.name), list(scenarios_df.logfile))}
+    base_scenario_name = list(scenarios_df.name)[0]
     LOGGER.info(scenarios_df)
     LOGGER.info(f'Baseline scenario: {base_scenario_name}')
-
-    # workspace = args['workspace_dir']
-    # if not os.path.exists(workspace):
-    #     os.mkdir(workspace)
 
     WorkspaceRegistry = namedtuple(
         'WorkspaceRegistry', ['workspace', 'file_registry'])
@@ -245,12 +243,8 @@ def execute(args):
         _, ds_info = datastack.get_datastack_info(logfile_path)
         args_dict = ds_info.args
         ws = args_dict['workspace_dir']
-        suffix = args_dict['results_suffix']
         with open(os.path.join(ws, f'file_registry{args["results_suffix"]}.json'), 'r') as file:
             scenario_registry = json.loads(file.read())
-        # suffix = natcap.invest.utils.make_suffix_string(
-        #     args_dict, 'results_suffix')
-        # vector_path = file_registry['watershed_results_sdr']
         workspace_registries[scenario] = WorkspaceRegistry(ws, scenario_registry)
     
     watershed_results_id = 'watershed_results_sdr'
@@ -293,16 +287,12 @@ def execute(args):
             for _raster_id in raster_id_list]
         target_raster_path_list = [
             file_registry[(f'diff_{_raster_id}_[SCENARIO]', scenario)]
-            # os.path.join(target_workspace,
-            #              f'diff_{_raster_id}_{scenario}.tif')
             for _raster_id in raster_id_list]
         difference_rasters(
             baseline_raster_path_list,
             scenario_raster_path_list,
             target_raster_path_list)
 
-    # target_watersheds_table_path = os.path.join(
-    #     workspace, 'watershed_results.csv')
     long_df = pandas.melt(
         results_df, id_vars=[FID_COL_NAME, SCENARIO_COL_NAME])
     long_df.to_csv(file_registry['watershed_results.csv'], index=False)
@@ -320,8 +310,9 @@ if __name__ == '__main__':
 
     csv_path = 'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/scenarios.csv'
     pandas.DataFrame({
-        'scenarios': ['baseline', 'alternative', 'classical'],
-        'logfiles': [
+        'name': ['baseline', 'alternative', 'classical'],
+        'description': ['my baseline scenario', 'my first scenario', 'my second scenario'],
+        'logfile': [
             'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/sdr_example/InVEST-sdr-log-2025-07-21--14_04_29.txt',
             'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/sdr_example_scenario/InVEST-sdr-log-2025-08-05--15_26_49.txt',
             'C:/Users/dmf/projects/forum/sdr_ndr_swy_luzon/sdr_example_scenario2/InVEST-sdr-log-2025-08-06--15_50_25.txt']

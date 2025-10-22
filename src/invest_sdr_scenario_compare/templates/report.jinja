@@ -37,20 +37,10 @@
         <h1>InVEST SDR Scenario Comparison Report</h1>
         <p>
             In this report, the baseline scenario was compared
-            with each of the other scenarios.
+            with each of the other scenarios. The first row of the
+            scenarios csv is always treated as the baseline scenario.
         </p>
-        <h4>Baseline Scenario:</h4>
-        <dl>
-            <dt>"{{ baseline_name }}"</dt>
-            <dd>{{ baseline_logfile }}</dd>
-        </dl>
-        <h4>Other Scenarios:</h4>
-        {% for scenario, logfile in scenarios.items() %}
-        <dl>
-            <dt>"{{ scenario }}"</dt>
-            <dd>{{ logfile }}</dd>
-        </dl>
-        {% endfor %}
+        {{ scenario_table_html | safe}}
         <hr />
         <h3>Aggregated results by watershed</h3>
         <p> {{ watersheds_data_description }} </p>
@@ -121,18 +111,7 @@
             });
         </script>
         <hr />
-        <h3>Raster Results: Across Scenarios</h3>
-        <p>
-            Plots of the original SDR model results for each scenario.
-        </p>
-        {% for key, value in sdr_scenario_rasters.items() %}
-            <details>
-                <summary>{{ key|e }}</summary>
-                {{ raster_plot_img(value) }}
-            </details>
-        {% endfor %}
-        <hr />
-        <h3>Raster Results: Differences from base scenario</h3>
+        <h3>Raster Results: Differences from the baseline scenario</h3>
         <p>
             Plots showing "scenario - baseline" for each variable.
         </p>
@@ -142,6 +121,15 @@
                 {{ raster_plot_img(value) }}
             </details>
         {% endfor %}
+        <hr />
+        <h3>Original SDR raster results across scenarios</h3>
+        {% for key, value in sdr_scenario_rasters.items() %}
+            <details>
+                <summary>{{ key|e }}</summary>
+                {{ raster_plot_img(value) }}
+            </details>
+        {% endfor %}
+        <hr />
         <details>
             <summary>Metadata</summary>
             <dl>

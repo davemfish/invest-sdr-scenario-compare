@@ -1,7 +1,6 @@
 import os
 
 from invest_reports import utils
-import matplotlib.pyplot as plt
 import pandas
 import taskgraph
 
@@ -55,18 +54,15 @@ def report(args, model_spec, file_registry, workspace_registries):
         os.mkdir(images_dir)
     output_html_path = os.path.join(args['workspace_dir'], 'report.html')
     scenarios_df = pandas.read_csv(args['scenarios'])
-    scenario_names = list(scenarios_df.scenarios)
+    scenario_names = list(scenarios_df.name)
     baseline_name = scenario_names.pop(0)
-    logfiles = list(scenarios_df.logfiles)
-    baseline_logfile = logfiles.pop(0)
-
-    scenario_dict = {
-        scen: log for scen, log in
-        zip(scenario_names, logfiles)}
+    scenario_table_html = scenarios_df.to_html(table_id='name', index=False)
 
     results_df = pandas.read_csv(file_registry['watershed_results.csv'])
     wide_df = results_df.pivot(
-        index=[FID_COL_NAME, 'variable'], columns=SCENARIO_COL_NAME, values='value')
+        index=[FID_COL_NAME, 'variable'],
+        columns=SCENARIO_COL_NAME,
+        values='value')
     wide_df.columns.name = None
     wide_df.reset_index(inplace=True)
     for _scen in scenario_names:
@@ -94,9 +90,9 @@ def report(args, model_spec, file_registry, workspace_registries):
         tif_list = []
         subtitle_list = []
         for _, row in scenarios_df.iterrows():
-            scenario = row.scenarios
-            subtitle_list.append(scenario)
-            scenario_file_reg = workspace_registries[scenario].file_registry
+            scenario_name = row['name']
+            subtitle_list.append(scenario_name)
+            scenario_file_reg = workspace_registries[scenario_name].file_registry
             tif_list.append(
                 scenario_file_reg[raster_id])
         png_path = os.path.join(
@@ -141,19 +137,19 @@ def report(args, model_spec, file_registry, workspace_registries):
 
     env = Environment(
         loader=PackageLoader('invest_sdr_scenario_compare', 'templates'))
-    template = env.get_template('report.jinja')
+    template = env.get_template('report.html')
     invest_reports_env = env = Environment(
         loader=PackageLoader('invest_reports', 'jinja_templates'))
 
     with open(output_html_path, "w", encoding="utf-8") as output_file:
-        output_file.write(template.render({
-            'baseline_name': baseline_name,
-            'baseline_logfile': baseline_logfile,
-            'scenarios': scenario_dict,
-            'watersheds_data_description': model_spec.get_output('watershed_results.csv').about,
-            'watersheds_data': watersheds_table,
-            'sdr_scenario_rasters': sdr_raster_fig_per_scenario,
-            'sdr_diff_rasters': diff_figure_per_scenario,
-            'model_spec_outputs': model_spec.outputs,
-            'invest_reports_env': invest_reports_env,
-        }))
+        output_file.write(template.render(
+            model_name=model_spec.model_title,
+            scenario_table_html=scenario_table_html,
+            watersheds_data_description=model_spec.get_output(
+                'watershed_results.csv').about,
+            watersheds_data=watersheds_table,
+            sdr_scenario_rasters=sdr_raster_fig_per_scenario,
+            sdr_diff_rasters=diff_figure_per_scenario,
+            model_spec_outputs=model_spec.outputs,
+            invest_reports_env=invest_reports_env,
+        ))
