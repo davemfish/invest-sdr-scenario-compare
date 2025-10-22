@@ -2,10 +2,16 @@
 {% from invest_reports_env.get_template('raster-plot-img.html') import raster_plot_img %}
 {% from invest_reports_env.get_template('content-grid.html') import content_grid %}
 {% from invest_reports_env.get_template('metadata.html') import list_metadata %}
+{% from invest_reports_env.get_template('datatable.html') import datatable %}
 
 {% block page_title %}
   {{ model_name }}
 {% endblock page_title %}
+
+{% block scripts %}
+  {{ super() }}
+  {% include invest_reports_env.get_template('datatable-js.html') %}
+{% endblock scripts%}
 
 {% block content %}
   
@@ -16,6 +22,10 @@
       scenarios csv is always treated as the baseline scenario.
   </p>
   {{ scenario_table_html | safe}}
+
+  <h2 class="section-header">Aggregated results by watershed</h2>
+  <p> {{ watersheds_data_description }} </p>
+  {{ datatable(watersheds_data, watersheds_table_id) }}
 
   <h2 class="section-header">Raster Results: Differences from the baseline scenario</h2>
   <h4>Plots showing "scenario - baseline" for each variable.</h4>

@@ -56,7 +56,7 @@ def report(args, model_spec, file_registry, workspace_registries):
     scenarios_df = pandas.read_csv(args['scenarios'])
     scenario_names = list(scenarios_df.name)
     baseline_name = scenario_names.pop(0)
-    scenario_table_html = scenarios_df.to_html(table_id='name', index=False)
+    scenario_table_html = scenarios_df.to_html(index=False)
 
     results_df = pandas.read_csv(file_registry['watershed_results.csv'])
     wide_df = results_df.pivot(
@@ -74,7 +74,8 @@ def report(args, model_spec, file_registry, workspace_registries):
     cols.insert(0, cols.pop(cols.index('variable')))
     cols.insert(0, cols.pop(cols.index(FID_COL_NAME)))
     wide_df = wide_df[cols]
-    watersheds_table = wide_df.to_html(table_id="watersheds", index=False)
+    watersheds_table_id = 'watersheds'  # for the element id
+    watersheds_table = wide_df.to_html(table_id=watersheds_table_id, index=False)
 
     raster_dtype_list = (
         ('avoided_erosion', 'continuous', 'linear'),
@@ -148,6 +149,7 @@ def report(args, model_spec, file_registry, workspace_registries):
             watersheds_data_description=model_spec.get_output(
                 'watershed_results.csv').about,
             watersheds_data=watersheds_table,
+            watersheds_table_id=watersheds_table_id,
             sdr_scenario_rasters=sdr_raster_fig_per_scenario,
             sdr_diff_rasters=diff_figure_per_scenario,
             model_spec_outputs=model_spec.outputs,
