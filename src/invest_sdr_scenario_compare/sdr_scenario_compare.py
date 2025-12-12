@@ -24,7 +24,7 @@ LOGGER = logging.getLogger(__name__)
 
 # I'd rather not support use of a results suffix in this plugin,
 # but invest requires it be in the MODEL_SPEC
-RESULTS_SUFFIX = spec.SUFFIX
+RESULTS_SUFFIX = spec.SUFFIX.model_copy()
 RESULTS_SUFFIX.hidden = True
 
 MODEL_SPEC = spec.ModelSpec(
