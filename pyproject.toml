@@ -10,7 +10,7 @@ dynamic = ["version"]
 dependencies = [
   "geopandas",
   "pygeoprocessing", 
-  "natcap.invest@git+https://github.com/natcap/invest.git@main", # for latest sdr.MODEL_SPEC
+  "natcap.invest>=3.17.0",
   "numpy",
   "invest-reports@git+https://github.com/natcap/invest-reports.git@main",
   "matplotlib"
@@ -49,5 +49,8 @@ package_name = "invest_sdr_scenario_compare"
 conda_dependencies = [
   "python==3.13",  
   "gdal<3.11",  # missing libgdal.so issue happened with gdal 3.11
-  "geotiff>=1.7.3"  # earlier versions don't support space in CONDA_PREFIX
+  "geotiff>=1.7.3",  # earlier versions don't support space in CONDA_PREFIX
+  "geopandas",
+  "pygeoprocessing", 
+  "natcap.invest>=3.17.0"
 ]
