@@ -33,7 +33,8 @@ to which all other scenarios are compared.
 ### Interpreting Results:
 
 After running the plugin, find the `report.html` file in the output workspace.
-Open this file in a web browser to see a summary of the scenario comparison.
+Open this file in a web browser to see a summary of the scenario comparison.  
+[Here is an example report](https://storage.googleapis.com/data.naturalcapitalproject.org/dave/sdr_scenario_comparison_report.html)
 
 The output workspace also includes a folder for each scenario (other than the baseline), 
 which includes the differenced rasters and watershed results table.
