@@ -2,20 +2,25 @@
 {% from invest_reports_env.get_template('raster-plot-img.html') import raster_plot_img %}
 {% from invest_reports_env.get_template('content-grid.html') import content_grid %}
 {% from invest_reports_env.get_template('metadata.html') import list_metadata %}
-{% from invest_reports_env.get_template('datatable.html') import datatable %}
+
+{% block styles %}
+  {{ super() }}
+  {% include invest_reports_env.get_template('datatable-styles.html') %}
+  <style>
+    :root {
+      --accent-color: color-mix(in srgb, var(--invest-green), white 75%);
+    }
+  </style>
+{% endblock styles %}
 
 {% block page_title %}
   {{ model_name }}
 {% endblock page_title %}
 
-{% block scripts %}
-  {{ super() }}
-  {% include invest_reports_env.get_template('datatable-dependencies.html') %}
-{% endblock scripts%}
-
 {% block content %}
-  
+
   <h1>InVEST SDR Scenario Comparison Report</h1>
+  <p>To learn more about this InVEST plugin, visit <a href={{userguide_url}}>{{userguide_url}}</a>.</p>
   <p>
       In this report, the baseline scenario was compared
       with each of the other scenarios. The first row of the
@@ -25,10 +30,7 @@
 
   <h2 class="section-header">Aggregated results by watershed</h2>
   <p> {{ watersheds_data_description }} </p>
-  {{ datatable(
-      watersheds_data,
-      watersheds_table_id,
-      watersheds_table_filter_by_column) }}
+  {{ watersheds_table | safe }}
 
   <h2 class="section-header">Raster Results: Differences from the baseline scenario</h2>
   <h4>Plots showing "scenario - baseline" for each variable.</h4>
@@ -45,8 +47,13 @@
   {{ 
     accordion_section(
       'Descriptions of files',
-      list_metadata(model_spec_outputs)
+      list_metadata(model_spec_outputs) | safe
     )
   }}
 
 {% endblock content %}
+
+{% block scripts %}
+  {{ super() }}
+  {% include invest_reports_env.get_template('datatable-js.html') %}
+{% endblock scripts %}

@@ -1,10 +1,10 @@
 import os
+import time
 
-from invest_reports import utils
+import jinja2
 import pandas
 import taskgraph
-
-from jinja2 import Environment, PackageLoader
+from invest_reports import utils, jinja_env
 
 
 SCENARIO_COL_NAME = 'scenario'
@@ -75,8 +75,10 @@ def report(args, model_spec, file_registry, workspace_registries):
     cols.insert(0, cols.pop(cols.index(variable_name)))
     cols.insert(0, cols.pop(cols.index(FID_COL_NAME)))
     wide_df = wide_df[cols]
-    watersheds_table_id = 'watersheds'  # for the element id
-    watersheds_table = wide_df.to_html(table_id=watersheds_table_id, index=False)
+    css_classes = ['datatable']
+    if wide_df.shape[0] > 10:
+        css_classes.append('paginate')
+    watersheds_table = wide_df.to_html(index=False, classes=css_classes)
 
     raster_dtype_list = (
         ('avoided_erosion', 'continuous', 'linear'),
@@ -137,23 +139,25 @@ def report(args, model_spec, file_registry, workspace_registries):
     for key, png_path in diff_figure_per_scenario.items():
         diff_figure_per_scenario[key] = utils.base64_encode_file(png_path)
 
-    env = Environment(
-        loader=PackageLoader('invest_sdr_scenario_compare', 'templates'))
+    env = jinja2.Environment(
+        loader=jinja2.PackageLoader('invest_sdr_scenario_compare', 'templates'),
+        autoescape=jinja2.select_autoescape(),
+        undefined=jinja2.StrictUndefined)
     template = env.get_template('report.html')
-    invest_reports_env = env = Environment(
-        loader=PackageLoader('invest_reports', 'jinja_templates'))
 
     with open(output_html_path, "w", encoding="utf-8") as output_file:
         output_file.write(template.render(
+            report_script=__file__,
+            model_id=model_spec.model_id,
             model_name=model_spec.model_title,
+            userguide_url=model_spec.userguide,
             scenario_table_html=scenario_table_html,
             watersheds_data_description=model_spec.get_output(
                 'watershed_results.csv').about,
-            watersheds_data=watersheds_table,
-            watersheds_table_id=watersheds_table_id,
-            watersheds_table_filter_by_column=variable_name,
+            watersheds_table=watersheds_table,
             sdr_scenario_rasters=sdr_raster_fig_per_scenario,
             sdr_diff_rasters=diff_figure_per_scenario,
             model_spec_outputs=model_spec.outputs,
-            invest_reports_env=invest_reports_env,
+            invest_reports_env=jinja_env,
+            timestamp=time.strftime('%Y-%m-%d %H:%M'),
         ))
