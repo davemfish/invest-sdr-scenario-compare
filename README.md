@@ -2,13 +2,16 @@
 
 Use this InVEST plugin to calculate the difference between SDR scenarios.
 
-Before using this plugin, run the SDR model any number of times to generate 
-scenarios. Designate one of those scenarios as the "baseline", and use this plugin 
+Before using this plugin, run the SDR model any number of times _for the same geographic region_ 
+to generate scenarios. Designate one of those scenarios as the "baseline", and use this plugin 
 to compare each other scenario to the baseline scenario.
 
 Scenarios are compared by creating difference maps ("scenario - baseline")
 for the main raster outputs of SDR. Differences at the watershed-scale are also
 calculated and presented as a "percent change" from the baseline scenario.
+
+_In order for scenarios to be compared, they must all use the same `Watersheds` input 
+and the same `Digital Elevation Model` input._
 
 ### Setup:
 
@@ -40,6 +43,6 @@ which includes the differenced rasters and watershed results table.
 InVEST Workbench users can install this plugin using the "Manage Plugins" menu
 within the Workbench, and this plugin's URL: https://github.com/davemfish/invest-sdr-scenario-compare/
 
-Python users can install this repository from source:
-`pip install invest-sdr-scenario-compare@git+https://github.com/davemfish/invest-sdr-scenario-compare.git@main`
+Python users can install this repository from source:  
+`pip install invest-sdr-scenario-compare@git+https://github.com/davemfish/invest-sdr-scenario-compare.git@main`  
 See `pyproject.toml` for dependencies.
