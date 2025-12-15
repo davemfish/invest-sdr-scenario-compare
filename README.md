@@ -34,3 +34,12 @@ Open this file in a web browser to see a summary of the scenario comparison.
 
 The output workspace also includes a folder for each scenario (other than the baseline), 
 which includes the differenced rasters and watershed results table.
+
+### How to install InVEST plugins?
+
+InVEST Workbench users can install this plugin using the "Manage Plugins" menu
+within the Workbench, and this plugin's URL: https://github.com/davemfish/invest-sdr-scenario-compare/
+
+Python users can install this repository from source:
+`pip install invest-sdr-scenario-compare@git+https://github.com/davemfish/invest-sdr-scenario-compare.git@main`
+See `pyproject.toml` for dependencies.

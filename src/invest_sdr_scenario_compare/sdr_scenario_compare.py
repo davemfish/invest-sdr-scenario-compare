@@ -308,30 +308,21 @@ def validate(args, limit_to=None):
 
 if __name__ == '__main__':
 
-    csv_path = 'C:/Users/dmf/projects/forum/sdr/scenarios.csv'
-    pandas.DataFrame({
-        'name': ['baseline', 'alternative', 'classical'],
-        'description': ['my baseline scenario', 'my first scenario', 'my second scenario'],
-        'logfile': [
-            'C:/Users/dmf/projects/forum/sdr/sampledata/InVEST-sdr-log-2025-10-06--15_36_34.txt',
-            'C:/Users/dmf/projects/forum/sdr/sampledata_no_erosion_control/InVEST-sdr-log-2025-10-07--10_35_57.txt',
-            'C:/Users/dmf/projects/forum/sdr/sampledata_no_erosion_control2/InVEST-sdr-log-2025-10-07--10_36_15.txt']
-        }).to_csv(csv_path, index=False)
-    workspace = 'C:/Users/dmf/projects/forum/sdr/scenario_compare'
+    # csv_path = 'C:/Users/dmf/projects/forum/sdr/scenarios.csv'
+    # pandas.DataFrame({
+    #     'name': ['baseline', 'alternative', 'classical'],
+    #     'description': ['my baseline scenario', 'my first scenario', 'my second scenario'],
+    #     'logfile': [
+    #         'C:/Users/dmf/projects/forum/sdr/sampledata/InVEST-sdr-log-2025-10-06--15_36_34.txt',
+    #         'C:/Users/dmf/projects/forum/sdr/sampledata_no_erosion_control/InVEST-sdr-log-2025-10-07--10_35_57.txt',
+    #         'C:/Users/dmf/projects/forum/sdr/sampledata_no_erosion_control2/InVEST-sdr-log-2025-10-07--10_36_15.txt']
+    #     }).to_csv(csv_path, index=False)
+    # workspace = 'C:/Users/dmf/projects/forum/sdr/scenario_compare'
+    csv_path = 'C:/Users/dmf/projects/forum/sdr_scenario_compare/scenarios.csv'
+    workspace = 'C:/Users/dmf/projects/forum/sdr_scenario_compare'
     args = {
         'scenarios': csv_path,
         'workspace_dir': workspace
     }
     MODEL_SPEC.execute(args, create_logfile=True,
                        generate_metadata=True, save_file_registry=True)
-    # model_id = 'sdr_compare_scenarios'
-    # with natcap.invest.utils.prepare_workspace(
-    #         args['workspace_dir'],
-    #         model_id=model_id,
-    #         logging_level=logging.INFO):
-    #     LOGGER.log(
-    #         datastack.ARGS_LOG_LEVEL,
-    #         'Starting model with parameters: \n%s',
-    #         datastack.format_args_dict(args, model_id))
-
-    #     execute(args)
